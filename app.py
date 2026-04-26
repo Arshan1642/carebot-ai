@@ -17,7 +17,7 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 import os
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")  # Put your Groq API key here
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "your-groq-api-key-here")  # Put your Groq API key here
 
 @login_manager.user_loader
 def load_user(user_id):
