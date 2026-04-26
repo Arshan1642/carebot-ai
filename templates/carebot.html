@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareBot AI — Chat</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<div class="carebot-page">
+
+    <!-- SIDEBAR -->
+    <div class="carebot-sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/" class="sidebar-logo">
+                <div class="logo-icon"><i class="fas fa-heartbeat"></i></div>
+                <span>CareBot<span class="highlight">AI</span></span>
+            </a>
+            <button class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <button class="new-chat-btn" onclick="clearChat()">
+            <i class="fas fa-plus"></i> New Chat
+        </button>
+
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Quick Actions</div>
+            <a href="/#symptom-checker" class="sidebar-item">
+                <i class="fas fa-stethoscope"></i> Symptom Checker
+            </a>
+            <a href="/#hospitals" class="sidebar-item">
+                <i class="fas fa-hospital"></i> Find Hospitals
+            </a>
+            <a href="/#doctors" class="sidebar-item">
+                <i class="fas fa-user-md"></i> Doctor Directory
+            </a>
+            <a href="/appointments" class="sidebar-item">
+                <i class="fas fa-calendar-check"></i> Book Appointment
+            </a>
+        </div>
+
+        {% if current_user.is_authenticated %}
+        <a href="/logout" class="btn-signup">Logout <i class="fas fa-sign-out-alt"></i></a>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Recent Chats</div>
+            {% if chats %}
+                {% for chat in chats %}
+                <div class="sidebar-chat-item" onclick="loadChat('{{ chat.message|replace("'", "\\'") }}', '{{ chat.response|replace("'", "\\'") }}')">
+                    <i class="fas fa-comment"></i>
+                    <span>{{ chat.message[:35] }}{% if chat.message|length > 35 %}...{% endif %}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="sidebar-empty">No previous chats</div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="sidebar-section">
+            <div class="sidebar-login-prompt">
+                <i class="fas fa-lock"></i>
+                <p>Login to save your chat history</p>
+                <a href="/login" class="sidebar-login-btn">Login</a>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="sidebar-footer">
+            <button class="theme-toggle-sidebar" onclick="toggleTheme()">
+                <i class="fas fa-moon" id="theme-icon"></i>
+                <span>Toggle Theme</span>
+            </button>
+            {% if current_user.is_authenticated %}
+            <div class="sidebar-user">
+                <div class="sidebar-user-avatar">{{ current_user.name[0].upper() }}</div>
+                <div class="sidebar-user-info">
+                    <span class="sidebar-user-name">{{ current_user.name }}</span>
+                    <span class="sidebar-user-email">{{ current_user.email }}</span>
+                </div>
+                <a href="/logout" class="sidebar-logout"><i class="fas fa-sign-out-alt"></i></a>
+            </div>
+            {% else %}
+            <div class="sidebar-auth-buttons">
+                <a href="/login" class="btn-login">Login</a>
+                <a href="/signup" class="btn-signup">Sign Up</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- MAIN CHAT AREA -->
+    <div class="carebot-main">
+
+        <!-- TOP BAR -->
+        <div class="carebot-topbar">
+            <button class="topbar-menu" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="topbar-info">
+                <div class="topbar-avatar"><i class="fas fa-robot"></i></div>
+                <div>
+                    <div class="topbar-name">CareBot AI</div>
+                    <div class="topbar-status"><span class="pulse-dot"></span> Online</div>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <button onclick="clearChat()" title="Clear Chat"><i class="fas fa-trash-alt"></i></button>
+                <a href="/" title="Home"><i class="fas fa-home"></i></a>
+            </div>
+        </div>
+
+        <!-- CHAT MESSAGES -->
+        <div class="carebot-messages" id="chat-box">
+            <div class="welcome-message">
+                <div class="welcome-avatar"><i class="fas fa-robot"></i></div>
+                <h2>Hi! I'm <span class="highlight">CareBot AI</span> 👋</h2>
+                <p>Your personal AI healthcare assistant. Ask me anything about your health!</p>
+                <div class="welcome-suggestions">
+                    <button onclick="quickAsk('What are symptoms of diabetes?')">🩺 Diabetes symptoms</button>
+                    <button onclick="quickAsk('Common cold remedies?')">🤧 Cold remedies</button>
+                    <button onclick="quickAsk('What is high blood pressure?')">❤️ Blood pressure</button>
+                    <button onclick="quickAsk('When should I see a doctor?')">👨‍⚕️ See a doctor?</button>
+                    <button onclick="quickAsk('What are symptoms of dengue?')">🦟 Dengue symptoms</button>
+                    <button onclick="quickAsk('How to improve immunity?')">💪 Boost immunity</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- INPUT AREA -->
+        <div class="carebot-input-area">
+            <div class="carebot-input-wrap">
+                <input type="text" id="user-input" placeholder="Ask your health question..." />
+                <button class="carebot-send-btn" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <p class="carebot-disclaimer">⚠️ CareBot AI is for informational purposes only. Always consult a qualified doctor.</p>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const themeIcon = document.getElementById('theme-icon');
+    if (themeIcon) {
+        themeIcon.classList.remove('fa-moon', 'fa-sun');
+        themeIcon.classList.add(savedTheme === 'dark' ? 'fa-sun' : 'fa-moon');
+    }
+
+    function toggleTheme() {
+        const html = document.documentElement;
+        const icon = document.getElementById('theme-icon');
+        if (html.getAttribute('data-theme') === 'light') {
+            html.setAttribute('data-theme', 'dark');
+            icon.classList.replace('fa-moon', 'fa-sun');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            html.setAttribute('data-theme', 'light');
+            icon.classList.replace('fa-sun', 'fa-moon');
+            localStorage.setItem('theme', 'light');
+        }
+    }
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function formatMessage(text) {
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/### (.*?)\n/g, '<div class="msg-heading">$1</div>')
+            .replace(/## (.*?)\n/g, '<div class="msg-heading">$1</div>')
+            .replace(/\* (.*?)(\n|$)/g, '<div class="msg-bullet">• $1</div>')
+            .replace(/\d\. (.*?)(\n|$)/g, '<div class="msg-bullet">$1</div>')
+            .replace(/\n/g, '<br>');
+    }
+
+    async function sendMessage() {
+    const input = document.getElementById("user-input");
+    const message = input.value.trim();
+    if (!message) return;
+
+    const welcome = document.querySelector('.welcome-message');
+    if (welcome) welcome.style.display = 'none';
+
+    appendMessage("user", message);
+    input.value = "";
+
+    // ===== INTENT DETECTION =====
+    const lower = message.toLowerCase();
+
+    // Hospital Intent
+    const hospitalKeywords = ['find hospital', 'nearby hospital', 'hospital near', 'find clinic', 'clinic near', 'nearest hospital', 'hospitals near', 'hospital in', 'clinic in', 'medical near', 'doctor near', 'find doctor'];
+    const isHospitalIntent = hospitalKeywords.some(k => lower.includes(k));
+
+    // Appointment Intent
+    const appointmentKeywords = ['book appointment', 'book a appointment', 'make appointment', 'schedule appointment', 'book doctor', 'need appointment'];
+    const isAppointmentIntent = appointmentKeywords.some(k => lower.includes(k));
+
+    if (isHospitalIntent) {
+        await handleHospitalIntent(message);
+        return;
+    }
+
+    if (isAppointmentIntent) {
+        removeTemp();
+        appendMessage("bot", formatMessage(
+            "Sure! I can help you book an appointment! 😊\n\n" +
+            "**Click below to go to our appointment booking page:**"
+        ));
+        // Add booking button in chat
+        const box = document.getElementById('chat-box');
+        const btnDiv = document.createElement('div');
+        btnDiv.classList.add('carebot-message', 'bot');
+        btnDiv.innerHTML = `
+            <div class="carebot-msg-avatar"><i class="fas fa-robot"></i></div>
+            <div class="carebot-msg-content">
+                <a href="/appointments" style="display:inline-block;padding:10px 24px;background:var(--primary);color:white;border-radius:12px;text-decoration:none;font-weight:600;margin-top:8px;">
+                    <i class="fas fa-calendar-check"></i> Book Appointment
+                </a>
+            </div>`;
+        box.appendChild(btnDiv);
+        box.scrollTop = box.scrollHeight;
+        return;
+    }
+
+    // Default — send to AI
+    appendMessage("bot", '<i class="fas fa-spinner fa-spin"></i> Thinking...', true);
+    const response = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+    });
+    const data = await response.json();
+    removeTemp();
+    appendMessage("bot", formatMessage(data.reply));
+}
+
+// ===== HOSPITAL INTENT HANDLER =====
+async function handleHospitalIntent(message) {
+    appendMessage("bot", '<i class="fas fa-spinner fa-spin"></i> Searching for hospitals...', true);
+
+    // Extract location from message
+    const lower = message.toLowerCase();
+    // Extract location by removing intent keywords as whole words only
+    let location = message
+    .replace(/\b(find|hospitals|hospital|clinics|clinic|nearby|near|around|doctors|doctor|medical|search|show|me|please|bro)\b/gi, '')
+    .trim();
+
+// Clean up extra spaces
+location = location.replace(/\s+/g, ' ').trim();
+
+    if (!location) location = 'Delhi';
+
+    try {
+        // Geocode location
+        const geoRes = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location + ' India')}&format=json&limit=1`,
+            { headers: { 'Accept-Language': 'en', 'User-Agent': 'CareBot-AI/1.0' } }
+        );
+        const geoData = await geoRes.json();
+
+        if (!geoData || geoData.length === 0) {
+            removeTemp();
+            appendMessage("bot", formatMessage(`Sorry, I couldn't find the location **"${location}"**. Please try a more specific area like "Rohini Delhi" or "Pitampura Delhi"! 😊`));
+            return;
+        }
+
+        const lat = parseFloat(geoData[0].lat);
+        const lon = parseFloat(geoData[0].lon);
+
+        // Find hospitals using Overpass
+        const query = `[out:json][timeout:25];(node["amenity"="hospital"](around:5000,${lat},${lon});way["amenity"="hospital"](around:5000,${lat},${lon});node["amenity"="clinic"](around:5000,${lat},${lon});way["amenity"="clinic"](around:5000,${lat},${lon}););out center;`;
+
+        const overpassRes = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST', body: query
+        });
+        const overpassData = await overpassRes.json();
+
+        const seen = new Set();
+        const hospitals = [];
+
+        for (const el of overpassData.elements) {
+            const tags = el.tags || {};
+            const name = tags.name || tags['name:en'];
+            if (!name || seen.has(name)) continue;
+            seen.add(name);
+            let elLat = el.type === 'node' ? el.lat : el.center?.lat;
+            let elLon = el.type === 'node' ? el.lon : el.center?.lon;
+            if (!elLat || !elLon) continue;
+            const dist = getDistanceChat(lat, lon, elLat, elLon);
+            hospitals.push({ name, dist, elLat, elLon, phone: tags.phone || null, amenity: tags.amenity });
+        }
+
+        hospitals.sort((a, b) => a.dist - b.dist);
+        const top = hospitals.slice(0, 5);
+
+        removeTemp();
+
+        if (top.length === 0) {
+            appendMessage("bot", formatMessage(`I couldn't find hospitals near **${location}**. Try the dedicated **[Hospital Finder](/hospitals)** page for better results! 🏥`));
+            return;
+        }
+
+        // Show hospitals in chat
+        const box = document.getElementById('chat-box');
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('carebot-message', 'bot');
+
+        const cardsHTML = top.map(h => `
+            <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;border-left:4px solid var(--primary);">
+                <div style="font-weight:700;color:var(--text);margin-bottom:6px;font-size:0.95rem;">🏥 ${h.name}</div>
+                <div style="color:var(--text-muted);font-size:0.85rem;margin-bottom:8px;">📍 ~${h.dist.toFixed(1)} km away</div>
+                ${h.phone ? `<div style="color:var(--text-muted);font-size:0.85rem;margin-bottom:8px;">📞 ${h.phone}</div>` : ''}
+                <a href="https://www.google.com/maps/dir/?api=1&destination=${h.elLat},${h.elLon}"
+                   target="_blank"
+                   style="display:inline-block;padding:6px 16px;background:var(--primary);color:white;border-radius:8px;text-decoration:none;font-size:0.85rem;font-weight:600;">
+                   <i class="fas fa-directions"></i> Get Directions
+                </a>
+            </div>
+        `).join('');
+
+        msgDiv.innerHTML = `
+            <div class="carebot-msg-avatar"><i class="fas fa-robot"></i></div>
+            <div class="carebot-msg-content">
+                <div style="font-weight:600;margin-bottom:12px;">Found <strong>${top.length} hospitals</strong> near <strong>${location}</strong>! 🏥</div>
+                ${cardsHTML}
+                <a href="/hospitals" style="display:inline-block;margin-top:8px;padding:8px 20px;background:transparent;border:2px solid var(--primary);color:var(--primary);border-radius:10px;text-decoration:none;font-weight:600;font-size:0.9rem;">
+                    <i class="fas fa-hospital"></i> View All Hospitals
+                </a>
+            </div>`;
+        box.appendChild(msgDiv);
+        box.scrollTop = box.scrollHeight;
+
+    } catch(err) {
+        removeTemp();
+        appendMessage("bot", formatMessage("Sorry, I couldn't fetch hospitals right now. Please try the **[Hospital Finder](/hospitals)** page! 🏥"));
+    }
+}
+
+function getDistanceChat(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+    function appendMessage(sender, text, isTemp = false) {
+        const box = document.getElementById("chat-box");
+        const div = document.createElement("div");
+        div.classList.add("carebot-message", sender);
+        if (isTemp) div.classList.add("temp");
+
+        if (sender === "bot") {
+            div.innerHTML = `
+                <div class="carebot-msg-avatar"><i class="fas fa-robot"></i></div>
+                <div class="carebot-msg-content">${text}</div>`;
+        } else {
+            div.innerHTML = `
+                <div class="carebot-msg-content">${text}</div>
+                <div class="carebot-msg-avatar user-avatar">${getUserInitial()}</div>`;
+        }
+
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function getUserInitial() {
+        {% if current_user.is_authenticated %}
+        return "{{ current_user.name[0].upper() }}";
+        {% else %}
+        return '<i class="fas fa-user"></i>';
+        {% endif %}
+    }
+
+    function removeTemp() {
+        document.querySelector('.carebot-message.temp')?.remove();
+    }
+
+    function clearChat() {
+        const box = document.getElementById('chat-box');
+        box.innerHTML = `
+            <div class="welcome-message">
+                <div class="welcome-avatar"><i class="fas fa-robot"></i></div>
+                <h2>Hi! I'm <span class="highlight">CareBot AI</span> 👋</h2>
+                <p>Your personal AI healthcare assistant. Ask me anything about your health!</p>
+                <div class="welcome-suggestions">
+                    <button onclick="quickAsk('What are symptoms of diabetes?')">🩺 Diabetes symptoms</button>
+                    <button onclick="quickAsk('Common cold remedies?')">🤧 Cold remedies</button>
+                    <button onclick="quickAsk('What is high blood pressure?')">❤️ Blood pressure</button>
+                    <button onclick="quickAsk('When should I see a doctor?')">👨‍⚕️ See a doctor?</button>
+                    <button onclick="quickAsk('What are symptoms of dengue?')">🦟 Dengue symptoms</button>
+                    <button onclick="quickAsk('How to improve immunity?')">💪 Boost immunity</button>
+                </div>
+            </div>`;
+    }
+
+    function loadChat(question, answer) {
+        const welcome = document.querySelector('.welcome-message');
+        if (welcome) welcome.style.display = 'none';
+        const box = document.getElementById('chat-box');
+        box.innerHTML = '';
+        appendMessage('user', question);
+        appendMessage('bot', formatMessage(answer));
+    }
+
+    function quickAsk(q) {
+        document.getElementById('user-input').value = q;
+        sendMessage();
+    }
+
+    document.getElementById("user-input").addEventListener("keypress", e => {
+        if (e.key === "Enter") sendMessage();
+    });
+</script>
+
+</body>
+</html>
